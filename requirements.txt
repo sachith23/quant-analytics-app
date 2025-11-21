@@ -7,4 +7,3 @@ plotly
 statsmodels
 scipy
 python-dateutil
-firebase-admin

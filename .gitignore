@@ -4,3 +4,4 @@ __pycache__/
 *.sqlite
 ticks.sqlite-journal
 .env
+.streamlit/secrets.toml

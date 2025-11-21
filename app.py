@@ -4,11 +4,9 @@ import pandas as pd
 import io
 import time
 from datetime import datetime, timezone
-import json
-import tempfile
 
 from ingestion import Ingestor
-from storage import Storage, FirebaseStorage
+from storage import Storage
 from analytics import AnalyticsEngine
 from alerts import AlertEngine
 
@@ -278,25 +276,7 @@ st.sidebar.markdown("---")
 st.sidebar.caption("💡 **Tip:** Upload historical OHLC data to seed the database instantly")
 
 # ---------------- Backend init ----------------
-USE_FIREBASE = True
-
-storage = None
-if USE_FIREBASE:
-    fb_cfg = st.secrets.get("firebase", None)
-    if fb_cfg is not None:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as f:
-            f.write(fb_cfg["service_account_json"].encode())
-            service_account_path = f.name
-
-        storage = FirebaseStorage(
-            database_url=fb_cfg["database_url"],
-            service_account_path=service_account_path,
-            root="quant_live"
-        )
-
-if storage is None:
-    storage = Storage("ticks.sqlite")
-
+storage = Storage("ticks.sqlite")
 analytics = AnalyticsEngine(storage=storage)
 alert_engine = AlertEngine(storage=storage)
 
@@ -714,8 +694,7 @@ with tab4:
         ingestion_status = "🟢 Active" if ingestor.running else "🔴 Stopped"
         st.markdown(f"**Ingestion:** {ingestion_status}")
         st.markdown(f"**Auto-refresh:** {'🟢 Enabled' if autorefresh else '🔴 Disabled'}")
-        db_label = "Firebase Realtime DB" if isinstance(storage, FirebaseStorage) else "SQLite (ticks.sqlite)"
-        st.markdown(f"**Database:** `{db_label}`")
+        st.markdown(f"**Database:** `ticks.sqlite`")
         st.markdown(f"**Total Rows:** `{storage.count_rows()}`")
     
     st.markdown("---")
@@ -1103,8 +1082,7 @@ with tab4:
         ingestion_status = "🟢 Active" if ingestor.running else "🔴 Stopped"
         st.markdown(f"**Ingestion:** {ingestion_status}")
         st.markdown(f"**Auto-refresh:** {'🟢 Enabled' if autorefresh else '🔴 Disabled'}")
-        db_label = "Firebase Realtime DB" if isinstance(storage, FirebaseStorage) else "SQLite (ticks.sqlite)"
-        st.markdown(f"**Database:** `{db_label}`")
+        st.markdown(f"**Database:** `ticks.sqlite`")
         st.markdown(f"**Total Rows:** `{storage.count_rows()}`")
     
     st.markdown("---")
