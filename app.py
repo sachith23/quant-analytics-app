@@ -4,6 +4,8 @@ import pandas as pd
 import io
 import time
 from datetime import datetime, timezone
+import json
+import tempfile
 
 from ingestion import Ingestor
 from storage import Storage, FirebaseStorage
@@ -276,19 +278,23 @@ st.sidebar.markdown("---")
 st.sidebar.caption("💡 **Tip:** Upload historical OHLC data to seed the database instantly")
 
 # ---------------- Backend init ----------------
+USE_FIREBASE = True
 
-USE_FIREBASE = True  # set False if you want to fall back to local SQLite
-
+storage = None
 if USE_FIREBASE:
-    # TODO: put your actual values here
-    FIREBASE_DATABASE_URL = "https://<your-project-id>.firebaseio.com"
-    FIREBASE_SERVICE_ACCOUNT = "path/to/serviceAccountKey.json"
-    storage = FirebaseStorage(
-        database_url=FIREBASE_DATABASE_URL,
-        service_account_path=FIREBASE_SERVICE_ACCOUNT,
-        root="quant_live"
-    )
-else:
+    fb_cfg = st.secrets.get("firebase", None)
+    if fb_cfg is not None:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as f:
+            f.write(fb_cfg["service_account_json"].encode())
+            service_account_path = f.name
+
+        storage = FirebaseStorage(
+            database_url=fb_cfg["database_url"],
+            service_account_path=service_account_path,
+            root="quant_live"
+        )
+
+if storage is None:
     storage = Storage("ticks.sqlite")
 
 analytics = AnalyticsEngine(storage=storage)
@@ -298,6 +304,8 @@ if "ingestor" not in st.session_state:
     st.session_state["ingestor"] = Ingestor(storage=storage)
 ingestor = st.session_state["ingestor"]
 
+if "alerts_log" not in st.session_state:
+    st.session_state["alerts_log"] = []
 
 # ---------------- Ingestion controls ----------------
 if start_btn:
@@ -706,7 +714,8 @@ with tab4:
         ingestion_status = "🟢 Active" if ingestor.running else "🔴 Stopped"
         st.markdown(f"**Ingestion:** {ingestion_status}")
         st.markdown(f"**Auto-refresh:** {'🟢 Enabled' if autorefresh else '🔴 Disabled'}")
-        st.markdown(f"**Database:** `ticks.sqlite`")
+        db_label = "Firebase Realtime DB" if isinstance(storage, FirebaseStorage) else "SQLite (ticks.sqlite)"
+        st.markdown(f"**Database:** `{db_label}`")
         st.markdown(f"**Total Rows:** `{storage.count_rows()}`")
     
     st.markdown("---")
@@ -1094,7 +1103,8 @@ with tab4:
         ingestion_status = "🟢 Active" if ingestor.running else "🔴 Stopped"
         st.markdown(f"**Ingestion:** {ingestion_status}")
         st.markdown(f"**Auto-refresh:** {'🟢 Enabled' if autorefresh else '🔴 Disabled'}")
-        st.markdown(f"**Database:** `ticks.sqlite`")
+        db_label = "Firebase Realtime DB" if isinstance(storage, FirebaseStorage) else "SQLite (ticks.sqlite)"
+        st.markdown(f"**Database:** `{db_label}`")
         st.markdown(f"**Total Rows:** `{storage.count_rows()}`")
     
     st.markdown("---")
