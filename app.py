@@ -382,6 +382,44 @@ if last_tick_time_raw:
 st.markdown('<h1>🎯 Quantitative Analytics Platform</h1>', unsafe_allow_html=True)
 st.markdown('<p style="color:#94a3b8; font-size:1.1rem; margin-bottom:2rem;">Real-time analytics for statistical arbitrage and market microstructure</p>', unsafe_allow_html=True)
 
+# ---------------- KPI Dashboard ----------------
+kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+
+with kpi1:
+    delta_color = "normal"
+    if last_z is not None:
+        if abs(last_z) >= z_threshold:
+            delta_color = "inverse"
+    st.metric(
+        "Z-Score",
+        f"{last_z:.2f}" if last_z is not None else "—",
+        delta=f"Threshold: ±{z_threshold}" if last_z is not None else None,
+        delta_color=delta_color
+    )
+
+with kpi2:
+    st.metric(
+        "Hedge Ratio",
+        f"{last_hedge:.4f}" if last_hedge is not None else "—",
+        help="OLS regression coefficient between pair"
+    )
+
+with kpi3:
+    st.metric(
+        "Correlation",
+        f"{last_corr:.3f}" if last_corr is not None else "—",
+        help="Rolling correlation between symbols"
+    )
+
+with kpi4:
+    st.metric(
+        "Last Update",
+        last_tick_display,
+        help="Last tick timestamp (IST)"
+    )
+
+st.markdown("---")
+
 # ---------------- Main Content ----------------
 tab1, tab2, tab3, tab4 = st.tabs(["📊 Market Data", "🔬 Pair Analytics", "🚨 Alerts", "⚙️ System"])
 
@@ -732,6 +770,46 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+# ---------------- KPI Dashboard ----------------
+kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+
+with kpi1:
+    delta_color = "normal"
+    if last_z is not None:
+        if abs(last_z) >= z_threshold:
+            delta_color = "inverse"
+    st.metric(
+        "Z-Score",
+        f"{last_z:.2f}" if last_z is not None else "—",
+        delta=f"Threshold: ±{z_threshold}" if last_z is not None else None,
+        delta_color=delta_color
+    )
+
+with kpi2:
+    st.metric(
+        "Hedge Ratio",
+        f"{last_hedge:.4f}" if last_hedge is not None else "—",
+        help="OLS regression coefficient between pair"
+    )
+
+with kpi3:
+    st.metric(
+        "Correlation",
+        f"{last_corr:.3f}" if last_corr is not None else "—",
+        help="Rolling correlation between symbols"
+    )
+
+with kpi4:
+    st.metric(
+        "Last Update",
+        last_tick_display,
+        help="Last tick timestamp (IST)"
+    )
+
+st.markdown("---")
+
+# ---------------- Main Content ----------------
+tab1, tab2, tab3, tab4 = st.tabs(["📊 Market Data", "🔬 Pair Analytics", "🚨 Alerts", "⚙️ System"])
 
 # ================= TAB 1: Market Data =================
 with tab1:
