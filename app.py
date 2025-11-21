@@ -6,7 +6,7 @@ import time
 from datetime import datetime, timezone
 
 from ingestion import Ingestor
-from storage import Storage
+from storage import Storage, FirebaseStorage
 from analytics import AnalyticsEngine
 from alerts import AlertEngine
 
@@ -276,7 +276,21 @@ st.sidebar.markdown("---")
 st.sidebar.caption("💡 **Tip:** Upload historical OHLC data to seed the database instantly")
 
 # ---------------- Backend init ----------------
-storage = Storage("ticks.sqlite")
+
+USE_FIREBASE = True  # set False if you want to fall back to local SQLite
+
+if USE_FIREBASE:
+    # TODO: put your actual values here
+    FIREBASE_DATABASE_URL = "https://<your-project-id>.firebaseio.com"
+    FIREBASE_SERVICE_ACCOUNT = "path/to/serviceAccountKey.json"
+    storage = FirebaseStorage(
+        database_url=FIREBASE_DATABASE_URL,
+        service_account_path=FIREBASE_SERVICE_ACCOUNT,
+        root="quant_live"
+    )
+else:
+    storage = Storage("ticks.sqlite")
+
 analytics = AnalyticsEngine(storage=storage)
 alert_engine = AlertEngine(storage=storage)
 
@@ -284,8 +298,6 @@ if "ingestor" not in st.session_state:
     st.session_state["ingestor"] = Ingestor(storage=storage)
 ingestor = st.session_state["ingestor"]
 
-if "alerts_log" not in st.session_state:
-    st.session_state["alerts_log"] = []
 
 # ---------------- Ingestion controls ----------------
 if start_btn:
