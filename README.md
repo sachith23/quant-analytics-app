@@ -57,10 +57,10 @@ The system follows a modular architecture:
 
 ## 🤖 AI Usage Transparency
 
-This project utilized Large Language Models (LLMs) for:
+This project utilized ChatGPT and Claude.ai for:
 - **Boilerplate Code**: Generating initial Streamlit layout and SQLite schema.
 - **Debugging**: Fixing pandas resampling edge cases and timezone issues.
 - **Refactoring**: Improving code modularity and adding type hints.
-- **Documentation**: Drafting this README and the architecture diagram.
+- **Documentation**: Drafting the architecture diagram.
 
 *Note: All analytical logic was verified for correctness.*
