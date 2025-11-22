@@ -730,9 +730,12 @@ with tab3:
 
     if st.session_state["alerts_log"]:
         df_alerts = pd.DataFrame(st.session_state["alerts_log"])
-        df_alerts["time"] = pd.to_datetime(df_alerts["time"]).dt.strftime(
-            "%Y-%m-%d %H:%M:%S"
+        df_alerts["time"] = (
+            pd.to_datetime(df_alerts["time"], utc=True)
+            .dt.tz_convert("Asia/Kolkata")
+            .dt.strftime("%Y-%m-%d %H:%M:%S")
         )
+
 
         st.markdown("### 🔴 Active Alerts")
         for alert in (
