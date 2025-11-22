@@ -54,6 +54,10 @@ The system follows a modular architecture:
 - **Hedge Ratio**: Calculated using OLS regression ($P_1 = \beta \cdot P_2 + \epsilon$).
 - **Z-Score**: $Z = \frac{Spread - \mu}{\sigma}$ over a rolling window.
 - **Stationarity**: Augmented Dickey-Fuller (ADF) test to validate cointegration.
+- **Mini Mean-Reversion Backtest**:
+    - The backtest identifies moments when the spread between two assets becomes unusually far from its average  (high absolute z-score).
+    - It opens a long or short spread position when this deviation occurs and closes the trade when the spread mean-reverts (z-score returns to zero).
+    - PnL is computed from the simulated price changes of both legs using the OLS hedge ratio, producing an equity curve and trade statistics.
 
 ## AI Usage Transparency
 
