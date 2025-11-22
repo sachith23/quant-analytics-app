@@ -25,7 +25,7 @@ The system follows a modular architecture:
 - **`analytics.py`**: Core quant logic (resampling, regression, filtering).
 - **`app.py`**: Streamlit frontend for visualization and control.
 
-![Architecture](architecture.mmd)
+![Architecture](architecture.png)
 
 ## 📦 Setup & Run
 
