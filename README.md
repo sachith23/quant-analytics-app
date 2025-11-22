@@ -51,7 +51,7 @@ The system follows a modular architecture:
 - **Data Quality**: Filters applied for zero/negative prices and invalid timestamps.
 
 ### Analytics
-- **Hedge Ratio**: Calculated using OLS regression ($P_1 = \beta \cdot P_2 + \epsilon$) or Kalman Filter for dynamic adaptation.
+- **Hedge Ratio**: Calculated using OLS regression ($P_1 = \beta \cdot P_2 + \epsilon$).
 - **Z-Score**: $Z = \frac{Spread - \mu}{\sigma}$ over a rolling window.
 - **Stationarity**: Augmented Dickey-Fuller (ADF) test to validate cointegration.
 

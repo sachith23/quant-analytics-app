@@ -229,7 +229,7 @@ st.markdown("""
 
 # ---------------- Sidebar controls ----------------
 st.sidebar.markdown(
-    '<div class="sidebar-section"><h3 style="margin:0; color:#e4e7eb;">⚙️ Configuration</h3></div>',
+    '<div class="sidebar-section"><h3 style="margin:0; color:#e4eeb;">⚙️ Configuration</h3></div>',
     unsafe_allow_html=True,
 )
 
@@ -723,6 +723,69 @@ with tab2:
                 -1
             ].get("value") != entry["value"]:
                 st.session_state["alerts_log"].append(entry)
+
+        # ---- Mini mean-reversion backtest (z>entry_z entry, exit at z crossing 0) ----
+        st.markdown("### 🧪 Mini Mean-Reversion Backtest")
+
+        bt_res = analytics.backtest_mean_reversion(
+            symbols[0],
+            symbols[1],
+            timeframe=timeframe,
+            rolling=rolling_window,
+            entry_z=z_threshold,
+            exit_z=0.0,
+        )
+
+        if not bt_res:
+            st.info("Not enough data to run the backtest yet. Let the stream run longer or upload more OHLC.")
+        else:
+            df_bt = bt_res["df"]
+            try:
+                df_bt.index = df_bt.index.tz_convert("Asia/Kolkata")
+            except Exception:
+                try:
+                    df_bt.index = (
+                        pd.to_datetime(df_bt.index)
+                        .tz_localize("UTC")
+                        .tz_convert("Asia/Kolkata")
+                    )
+                except Exception:
+                    pass
+
+            eq_fig = go.Figure()
+            eq_fig.add_trace(
+                go.Scatter(
+                    x=df_bt.index,
+                    y=df_bt["equity"],
+                    name="Equity Curve",
+                    line=dict(width=2),
+                )
+            )
+            eq_fig.update_layout(
+                height=300,
+                hovermode="x unified",
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                margin=dict(l=20, r=20, t=10, b=20),
+                yaxis_title="P&L (spread units)",
+            )
+
+            st.plotly_chart(eq_fig, use_container_width=True, key="meanrev_equity")
+
+            col_bt1, col_bt2, col_bt3 = st.columns(3)
+            with col_bt1:
+                st.metric("Total P&L", f"{bt_res['total_pnl']:.4f}")
+            with col_bt2:
+                st.metric("Max Drawdown", f"{bt_res['max_drawdown']:.4f}")
+            with col_bt3:
+                if bt_res["n_trades"] > 0 and bt_res["win_rate"] is not None:
+                    st.metric(
+                        "Trades / Win Rate",
+                        f"{bt_res['n_trades']} / {bt_res['win_rate']*100:.1f}%",
+                    )
+                else:
+                    st.metric("Trades / Win Rate", f"{bt_res['n_trades']} / —")
 
 # ================= TAB 3: Alerts =================
 with tab3:

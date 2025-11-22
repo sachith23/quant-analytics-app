@@ -191,8 +191,16 @@ class AnalyticsEngine:
 
         zscore = (spread - mean) / std
 
-        # drop rows where zscore is NaN (these are early rows with not enough rolling data)
-        df_z = pd.DataFrame({"spread": spread, "zscore": zscore}).dropna()
+        # keep prices in the same frame so backtest can use them
+        df_all = pd.DataFrame({
+            "spread": spread,
+            "zscore": zscore,
+            s1: df[s1],
+            s2: df[s2],
+        })
+
+        # drop rows where zscore (or prices) are NaN (these are early rows with not enough rolling data)
+        df_z = df_all.dropna()
         if df_z.empty:
             return None
 
@@ -211,6 +219,127 @@ class AnalyticsEngine:
             "hedge": hedge,
             "rolling_corr": rolling_corr,
             "adf_p": adf_p
+        }
+
+    def backtest_mean_reversion(self, s1, s2, timeframe="1min", rolling=30,
+                                entry_z=2.0, exit_z=0.0):
+        """
+        Mini mean-reversion backtest on the pair spread.
+
+        Strategy (symmetric):
+          - If z >= entry_z  -> SHORT spread (short s1, long beta*s2)
+          - If z <= -entry_z -> LONG spread (long s1, short beta*s2)
+          - Exit:
+              * For SHORT spread: when z <= exit_z   (default 0.0)
+              * For LONG spread:  when z >= exit_z   (default 0.0)
+        """
+        res = self.compute_pair_analytics(s1, s2, timeframe=timeframe, rolling=rolling)
+        if not res or res.get("df") is None or res["df"].empty:
+            return None
+
+        df = res["df"].copy().sort_index()
+        beta = res.get("hedge")
+        if beta is None:
+            return None
+
+        if s1 not in df.columns or s2 not in df.columns:
+            return None
+
+        p1 = df[s1].values
+        p2 = df[s2].values
+        z = df["zscore"].values
+
+        n = len(df)
+        if n < 2:
+            return None
+
+        # backtest state
+        pos = 0  # 0 = flat, +1 = long spread, -1 = short spread
+        position_series = [0]
+        pnl_series = [0.0]
+        equity_series = [0.0]
+        trades = []
+        entry_equity = None
+
+        # iterate over bars (1..n-1), P&L uses position held over (i-1 -> i)
+        for i in range(1, n):
+            prev_pos = pos
+
+            # P&L for interval using previous position
+            if prev_pos != 0:
+                exposure1 = prev_pos * 1.0
+                exposure2 = -prev_pos * beta
+                step_pnl = (
+                    exposure1 * (p1[i] - p1[i - 1]) +
+                    exposure2 * (p2[i] - p2[i - 1])
+                )
+            else:
+                step_pnl = 0.0
+
+            new_equity = equity_series[-1] + step_pnl
+
+            # Trading logic based on current z
+            zi = z[i]
+
+            if prev_pos == 0:
+                # look for entry
+                if zi >= entry_z:
+                    # short spread
+                    pos = -1
+                    entry_equity = new_equity
+                elif zi <= -entry_z:
+                    # long spread
+                    pos = 1
+                    entry_equity = new_equity
+            else:
+                # look for exit
+                if prev_pos == -1:
+                    # exiting short spread when z <= exit_z
+                    if zi <= exit_z:
+                        pos = 0
+                        if entry_equity is not None:
+                            trades.append(new_equity - entry_equity)
+                            entry_equity = None
+                elif prev_pos == 1:
+                    # exiting long spread when z >= exit_z
+                    if zi >= exit_z:
+                        pos = 0
+                        if entry_equity is not None:
+                            trades.append(new_equity - entry_equity)
+                            entry_equity = None
+
+            pnl_series.append(step_pnl)
+            equity_series.append(new_equity)
+            position_series.append(pos)
+
+        df["position"] = position_series
+        df["pnl"] = pnl_series
+        df["equity"] = equity_series
+
+        total_pnl = equity_series[-1]
+        # max drawdown
+        max_equity = float("-inf")
+        max_dd = 0.0
+        for e in equity_series:
+            if e > max_equity:
+                max_equity = e
+            dd = max_equity - e
+            if dd > max_dd:
+                max_dd = dd
+
+        n_trades = len(trades)
+        if n_trades > 0:
+            wins = sum(1 for t in trades if t > 0)
+            win_rate = wins / n_trades
+        else:
+            win_rate = None
+
+        return {
+            "df": df,
+            "total_pnl": float(total_pnl),
+            "max_drawdown": float(max_dd),
+            "n_trades": int(n_trades),
+            "win_rate": float(win_rate) if win_rate is not None else None,
         }
 
     def plot_prices(self, df_ohlc):
