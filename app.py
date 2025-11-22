@@ -846,6 +846,16 @@ if export_analytics:
                 mime="text/csv",
             )
 
+# ---------------- Auto-refresh ----------------
+if autorefresh:
+    countdown_placeholder = st.sidebar.empty()
+    for remaining in range(30, 0, -1):
+        countdown_placeholder.caption(f"⏱️ Next refresh in: {remaining}s")
+        time.sleep(1)
+    st.rerun()
+
+if st.sidebar.button("🔄 Manual Refresh Now"):
+    st.rerun()
 
 st.markdown("---")
 st.markdown(
