@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import io
 import time
+from streamlit_autorefresh import st_autorefresh
 from datetime import datetime, timezone
 
 from ingestion import Ingestor
@@ -848,14 +849,12 @@ if export_analytics:
 
 # ---------------- Auto-refresh ----------------
 if autorefresh:
-    countdown_placeholder = st.sidebar.empty()
-    for remaining in range(30, 0, -1):
-        countdown_placeholder.caption(f"⏱️ Next refresh in: {remaining}s")
-        time.sleep(1)
-    st.rerun()
+    st_autorefresh(interval=30_000, key="data_refresh")
+    st.sidebar.caption("⏱️ Auto-refresh: every 30s")
 
 if st.sidebar.button("🔄 Manual Refresh Now"):
     st.rerun()
+
 
 st.markdown("---")
 st.markdown(
