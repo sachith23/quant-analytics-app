@@ -2,7 +2,7 @@
 
 A real-time quantitative analytics dashboard for statistical arbitrage monitoring, built with Python and Streamlit.
 
-## 🚀 Features
+## Features
 
 - **Real-time Data Ingestion**: Connects to Binance WebSocket streams for live tick data.
 - **Statistical Arbitrage Analytics**:
@@ -16,7 +16,7 @@ A real-time quantitative analytics dashboard for statistical arbitrage monitorin
     - Historical data upload & export
 - **Alert System**: Configurable Z-score alerts.
 
-## 🛠️ Architecture
+## Architecture
 
 The system follows a modular architecture:
 
@@ -27,7 +27,7 @@ The system follows a modular architecture:
 
 ![Architecture](architecture.png)
 
-## 📦 Setup & Run
+## Setup & Run
 
 1.  **Install Dependencies**:
     ```bash
@@ -44,7 +44,7 @@ The system follows a modular architecture:
     - Click **Start** to begin ingestion.
     - Watch real-time analytics in the "Pair Analytics" tab.
 
-## 🧠 Methodology
+## Methodology
 
 ### Data Processing
 - **Ticks to OHLC**: Raw ticks are aggregated into time-based bars (1s, 1m, 5m) using `pandas.resample`.
@@ -55,12 +55,10 @@ The system follows a modular architecture:
 - **Z-Score**: $Z = \frac{Spread - \mu}{\sigma}$ over a rolling window.
 - **Stationarity**: Augmented Dickey-Fuller (ADF) test to validate cointegration.
 
-## 🤖 AI Usage Transparency
+## AI Usage Transparency
 
 This project utilized ChatGPT and Claude.ai for:
 - **Boilerplate Code**: Generating initial Streamlit layout and SQLite schema.
 - **Debugging**: Fixing pandas resampling edge cases and timezone issues.
 - **Refactoring**: Improving code modularity and adding type hints.
 - **Documentation**: Drafting the architecture diagram.
-
-*Note: All analytical logic was verified for correctness.*
