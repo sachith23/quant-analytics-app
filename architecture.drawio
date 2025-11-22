@@ -1,0 +1,40 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Page-1">
+    <mxGraphModel>
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="extLayer" value="External Data Sources" style="swimlane=1;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="40" y="80" width="260" height="140" as="geometry"/></mxCell>
+        <mxCell id="ingestLayer" value="Ingestion Layer" style="swimlane=1;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="340" y="80" width="260" height="140" as="geometry"/></mxCell>
+        <mxCell id="storageLayer" value="Storage Layer" style="swimlane=1;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="640" y="80" width="260" height="180" as="geometry"/></mxCell>
+        <mxCell id="analyticsLayer" value="Analytics Layer" style="swimlane=1;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="940" y="60" width="320" height="220" as="geometry"/></mxCell>
+        <mxCell id="uiLayer" value="Streamlit Frontend" style="swimlane=1;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="1320" y="60" width="320" height="220" as="geometry"/></mxCell>
+        <mxCell id="BWeb" value="Binance WebSocket - tick stream with trades" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="extLayer"><mxGeometry x="60" y="120" width="220" height="40" as="geometry"/></mxCell>
+        <mxCell id="UploadCSV" value="User CSV Upload - historical OHLC" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="extLayer"><mxGeometry x="60" y="180" width="220" height="40" as="geometry"/></mxCell>
+        <mxCell id="Ingestor" value="Ingestor - ingestion.py - websocket threads parsing trade messages" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="ingestLayer"><mxGeometry x="360" y="120" width="220" height="60" as="geometry"/></mxCell>
+        <mxCell id="WSClients" value="WebSocket Clients" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="ingestLayer"><mxGeometry x="360" y="190" width="220" height="40" as="geometry"/></mxCell>
+        <mxCell id="SQLite" value="SQLite Database - ticks table and ohlc table - storage.py" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="storageLayer"><mxGeometry x="660" y="120" width="220" height="60" as="geometry"/></mxCell>
+        <mxCell id="TickBuffer" value="Recent Tick Records" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="storageLayer"><mxGeometry x="660" y="190" width="220" height="40" as="geometry"/></mxCell>
+        <mxCell id="OHLCTable" value="Uploaded OHLC Records" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="storageLayer"><mxGeometry x="660" y="240" width="220" height="40" as="geometry"/></mxCell>
+        <mxCell id="Analytics" value="Analytics Engine - analytics.py - resample ticks to OHLC, hedge ratio, spread, zscore, ADF, rolling correlation" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="analyticsLayer"><mxGeometry x="960" y="90" width="280" height="80" as="geometry"/></mxCell>
+        <mxCell id="Resampler" value="Resampling Engine" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="analyticsLayer"><mxGeometry x="960" y="180" width="280" height="40" as="geometry"/></mxCell>
+        <mxCell id="AlertEngine" value="Alert Engine - alerts.py - rule based alerts such as zscore threshold" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="analyticsLayer"><mxGeometry x="960" y="230" width="280" height="60" as="geometry"/></mxCell>
+        <mxCell id="Streamlit" value="Streamlit UI - app.py - controls, start-stop ingestion, upload, export" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="uiLayer"><mxGeometry x="1340" y="90" width="280" height="60" as="geometry"/></mxCell>
+        <mxCell id="Charts" value="Plotly Charts - price, spread, zscore, volume" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="uiLayer"><mxGeometry x="1340" y="160" width="280" height="40" as="geometry"/></mxCell>
+        <mxCell id="Exports" value="CSV Export and Download" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="uiLayer"><mxGeometry x="1340" y="210" width="280" height="40" as="geometry"/></mxCell>
+        <mxCell id="e1" value="trade messages" style="endArrow=block;rounded=0;jettySize=auto;orthogonalLoop=1;html=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"/><mxCell source="BWeb" target="Ingestor" /></mxCell>
+        <mxCell id="e2" value="insert_tick" style="endArrow=block;rounded=0;jettySize=auto;orthogonalLoop=1;html=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"/><mxCell source="Ingestor" target="SQLite" /></mxCell>
+        <mxCell id="e3" value="insert_ohlc_bar" style="endArrow=block;rounded=0;jettySize=auto;orthogonalLoop=1;html=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"/><mxCell source="UploadCSV" target="SQLite" /></mxCell>
+        <mxCell id="e4" value="fetch_recent_ticks" style="endArrow=block;rounded=0;jettySize=auto;orthogonalLoop=1;html=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"/><mxCell source="SQLite" target="Analytics" /></mxCell>
+        <mxCell id="e5" value="fetch_recent_ohlc" style="endArrow=block;rounded=0;jettySize=auto;orthogonalLoop=1;html=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"/><mxCell source="SQLite" target="Analytics" /></mxCell>
+        <mxCell id="e6" value="analytics results" style="endArrow=block;rounded=0;jettySize=auto;orthogonalLoop=1;html=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"/><mxCell source="Analytics" target="Streamlit" /></mxCell>
+        <mxCell id="e7" value="display charts" style="endArrow=block;rounded=0;jettySize=auto;orthogonalLoop=1;html=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"/><mxCell source="Streamlit" target="Charts" /></mxCell>
+        <mxCell id="e8" value="export CSV" style="endArrow=block;rounded=0;jettySize=auto;orthogonalLoop=1;html=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"/><mxCell source="Streamlit" target="Exports" /></mxCell>
+        <mxCell id="e9" value="alert signals" style="endArrow=block;rounded=0;jettySize=auto;orthogonalLoop=1;html=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"/><mxCell source="Analytics" target="AlertEngine" /></mxCell>
+        <mxCell id="e10" value="alert triggered" style="endArrow=block;rounded=0;jettySize=auto;orthogonalLoop=1;html=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"/><mxCell source="AlertEngine" target="Streamlit" /></mxCell>
+        <mxCell id="e11" value="start or stop ingestion" style="endArrow=block;rounded=0;jettySize=auto;orthogonalLoop=1;html=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"/><mxCell source="Streamlit" target="Ingestor" /></mxCell>
+        <mxCell id="e12" value="upload CSV" style="endArrow=block;rounded=0;jettySize=auto;orthogonalLoop=1;html=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"/><mxCell source="Streamlit" target="UploadCSV" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

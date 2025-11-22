@@ -5,3 +5,4 @@ __pycache__/
 ticks.sqlite-journal
 .env
 .streamlit/secrets.toml
+.drawio

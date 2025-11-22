@@ -1,0 +1,53 @@
+%% Mermaid v9+ recommended
+flowchart TD
+
+%% External Data
+subgraph EXTERNAL["External Data Sources"]
+    BWeb["Binance WebSocket - tick stream with trades"]
+    UploadCSV["User CSV Upload - historical OHLC"]
+end
+
+%% Ingestion Layer
+subgraph INGEST["Ingestion Layer"]
+    Ingestor["Ingestor - ingestion.py - websocket threads parsing trade messages"]
+    WSClients["WebSocket Clients"]
+end
+
+%% Storage Layer
+subgraph STORAGE["Storage Layer"]
+    SQLite["SQLite Database - ticks table and ohlc table - storage.py"]
+    TickBuffer["Recent Tick Records"]
+    OHLCTable["Uploaded OHLC Records"]
+end
+
+%% Analytics Layer
+subgraph ANALYTICS["Analytics Layer"]
+    Analytics["Analytics Engine - analytics.py - resample ticks to OHLC, hedge ratio, spread, zscore, ADF, rolling correlation"]
+    Resampler["Resampling Engine"]
+    AlertEngine["Alert Engine - alerts.py - rule based alerts such as zscore threshold"]
+end
+
+%% Frontend Layer
+subgraph UI["Streamlit Frontend"]
+    Streamlit["Streamlit UI - app.py - controls, start-stop ingestion, upload, export"]
+    Charts["Plotly Charts - price, spread, zscore, volume"]
+    Exports["CSV Export and Download"]
+end
+
+%% Data Flows
+BWeb -->|"trade messages"| Ingestor
+Ingestor -->|"insert_tick"| SQLite
+UploadCSV -->|"insert_ohlc_bar"| SQLite
+
+SQLite -->|"fetch_recent_ticks"| Analytics
+SQLite -->|"fetch_recent_ohlc"| Analytics
+
+Analytics -->|"analytics results"| Streamlit
+Streamlit -->|"display charts"| Charts
+Streamlit -->|"export CSV"| Exports
+
+Analytics -->|"alert signals"| AlertEngine
+AlertEngine -->|"alert triggered"| Streamlit
+
+Streamlit -->|"start or stop ingestion"| Ingestor
+Streamlit -->|"upload CSV"| UploadCSV
