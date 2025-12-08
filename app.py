@@ -1,4 +1,4 @@
-# app.py – Enhanced UI with modern design, better layout, and improved UX
+# app_with_trading.py — Enhanced UI with automated trading capabilities
 import streamlit as st
 import pandas as pd
 import io
@@ -10,14 +10,15 @@ from ingestion import Ingestor
 from storage import Storage
 from analytics import AnalyticsEngine
 from alerts import AlertEngine
+from trading_engine import TradingEngine
 
 # Page config with custom theme
 st.set_page_config(
-    page_title="Quant Analytics Platform",
+    page_title="Quant Analytics & Trading Platform",
     layout="wide",
     initial_sidebar_state="expanded",
     menu_items={
-        'About': "Real-time quantitative analytics for statistical arbitrage"
+        'About': "Real-time quantitative analytics and automated trading"
     }
 )
 
@@ -224,12 +225,29 @@ st.markdown("""
         margin: 1rem 0 0.5rem 0;
         border-left: 3px solid #667eea;
     }
+    
+    /* Trading status banners */
+    .trading-live {
+        background: rgba(34, 197, 94, 0.2);
+        border-left: 4px solid #22c55e;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
+    
+    .trading-stopped {
+        background: rgba(239, 68, 68, 0.2);
+        border-left: 4px solid #ef4444;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
     </style>
 """, unsafe_allow_html=True)
 
 # ---------------- Sidebar controls ----------------
 st.sidebar.markdown(
-    '<div class="sidebar-section"><h3 style="margin:0; color:#e4eeb;">⚙️ Configuration</h3></div>',
+    '<div class="sidebar-section"><h3 style="margin:0; color:#e4e7eb;">⚙️ Configuration</h3></div>',
     unsafe_allow_html=True,
 )
 
@@ -267,6 +285,29 @@ with col_start:
 with col_stop:
     stop_btn = st.button("⏹️ Stop", use_container_width=True)
 
+# ============ NEW: Trading Engine Controls ============
+st.sidebar.markdown(
+    '<div class="sidebar-section"><h3 style="margin:0; color:#e4e7eb;">🤖 Automated Trading</h3></div>',
+    unsafe_allow_html=True,
+)
+
+with st.sidebar.expander("⚙️ Trading Configuration", expanded=False):
+    api_key = st.text_input("Binance API Key", type="password", help="Testnet API key")
+    api_secret = st.text_input("Binance API Secret", type="password", help="Testnet API secret")
+    
+    st.markdown("**Trading Parameters**")
+    entry_z = st.number_input("Entry Z-Score", value=2.0, step=0.1, help="Absolute z-score to enter trades")
+    exit_z = st.number_input("Exit Z-Score", value=0.0, step=0.1, help="Z-score to exit trades (mean reversion)")
+    check_interval = st.number_input("Check Interval (sec)", value=10, min_value=5, step=5)
+
+col_trade_start, col_trade_stop = st.sidebar.columns(2)
+with col_trade_start:
+    trade_start_btn = st.button("🚀 Start Trading", use_container_width=True, type="primary")
+with col_trade_stop:
+    trade_stop_btn = st.button("🛑 Stop Trading", use_container_width=True)
+
+emergency_close = st.sidebar.button("🚨 EMERGENCY CLOSE ALL", use_container_width=True, type="secondary")
+
 st.sidebar.markdown(
     '<div class="sidebar-section"><h3 style="margin:0; color:#e4e7eb;">📤 Data Management</h3></div>',
     unsafe_allow_html=True,
@@ -285,7 +326,7 @@ with col_exp2:
     export_analytics = st.button("📈 Export Analytics", use_container_width=True)
 
 st.sidebar.markdown("---")
-st.sidebar.caption("💡 **Tip:** Upload historical OHLC data to seed the database instantly")
+st.sidebar.caption("💡 **Tip:** Trading on Binance Futures Testnet - No real funds")
 
 # ---------------- Backend init ----------------
 storage = Storage("ticks.sqlite")
@@ -295,6 +336,12 @@ alert_engine = AlertEngine(storage=storage)
 if "ingestor" not in st.session_state:
     st.session_state["ingestor"] = Ingestor(storage=storage)
 ingestor = st.session_state["ingestor"]
+
+# Initialize trading engine
+if "trading_engine" not in st.session_state:
+    st.session_state["trading_engine"] = None
+if "trading_api_configured" not in st.session_state:
+    st.session_state["trading_api_configured"] = False
 
 if "alerts_log" not in st.session_state:
     st.session_state["alerts_log"] = []
@@ -320,6 +367,46 @@ if stop_btn:
     except Exception:
         pass
     st.success("✅ Ingestion stopped")
+
+# ============ NEW: Trading Engine Control Logic ============
+if trade_start_btn:
+    if not api_key or not api_secret:
+        st.sidebar.error("❌ Please provide API credentials")
+    elif len(symbols) < 2:
+        st.sidebar.error("❌ Need at least 2 symbols for pairs trading")
+    else:
+        try:
+            # Initialize trading engine if not exists
+            if st.session_state["trading_engine"] is None:
+                st.session_state["trading_engine"] = TradingEngine(
+                    api_key=api_key,
+                    api_secret=api_secret,
+                    storage=storage,
+                    analytics=analytics,
+                    alert_engine=alert_engine
+                )
+            
+            trading_engine = st.session_state["trading_engine"]
+            trading_engine.start(
+                symbols=symbols,
+                entry_threshold=entry_z,
+                exit_threshold=exit_z,
+                check_interval=check_interval
+            )
+            st.sidebar.success(f"🚀 Trading started for {symbols[0]}/{symbols[1]}")
+            st.session_state["trading_api_configured"] = True
+        except Exception as e:
+            st.sidebar.error(f"❌ Failed to start trading: {str(e)}")
+
+if trade_stop_btn:
+    if st.session_state["trading_engine"]:
+        st.session_state["trading_engine"].stop()
+        st.sidebar.success("🛑 Trading stopped")
+
+if emergency_close:
+    if st.session_state["trading_engine"]:
+        st.session_state["trading_engine"].emergency_close_all()
+        st.sidebar.warning("🚨 All positions closed!")
 
 # ---------------- File upload ingestion ----------------
 if uploaded is not None:
@@ -411,14 +498,40 @@ if last_tick_time_raw:
         last_tick_display = "—"
 
 # ---------------- Header ----------------
-st.markdown('<h1>🎯 Quantitative Analytics Platform</h1>', unsafe_allow_html=True)
+st.markdown('<h1>🎯 Quantitative Analytics & Trading Platform</h1>', unsafe_allow_html=True)
 st.markdown(
-    '<p style="color:#94a3b8; font-size:1.1rem; margin-bottom:2rem;">Real-time analytics for statistical arbitrage and market microstructure</p>',
+    '<p style="color:#94a3b8; font-size:1.1rem; margin-bottom:2rem;">Real-time analytics and automated trading for statistical arbitrage</p>',
     unsafe_allow_html=True,
 )
 
+# ============ NEW: Trading Status Banner ============
+if st.session_state["trading_engine"] and st.session_state["trading_engine"].running:
+    status = st.session_state["trading_engine"].get_status()
+    
+    st.markdown(
+        f"""
+        <div class="trading-live">
+            <strong>🟢 LIVE TRADING ACTIVE</strong><br>
+            Balance: {status['current_balance']:.2f} USDT | 
+            P&L: {status['pnl']:.2f} USDT ({status['pnl_pct']:.2f}%) | 
+            Active Positions: {status['active_positions']} | 
+            Total Trades: {status['total_trades']}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+elif st.session_state["trading_api_configured"]:
+    st.markdown(
+        """
+        <div class="trading-stopped">
+            <strong>🔴 TRADING STOPPED</strong>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
 # ---------------- KPI Dashboard ----------------
-kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
 
 with kpi1:
     delta_color = "normal"
@@ -452,11 +565,24 @@ with kpi4:
         help="Last tick timestamp (IST)",
     )
 
+with kpi5:
+    # NEW: Account status
+    if st.session_state["trading_engine"] and st.session_state["trading_engine"].running:
+        status = st.session_state["trading_engine"].get_status()
+        st.metric(
+            "Account P&L",
+            f"{status['pnl']:.2f}",
+            delta=f"{status['pnl_pct']:.2f}%",
+            delta_color="normal" if status['pnl'] >= 0 else "inverse"
+        )
+    else:
+        st.metric("Trading Status", "Offline")
+
 st.markdown("---")
 
 # ---------------- Main Content ----------------
-tab1, tab2, tab3, tab4 = st.tabs(
-    ["📊 Market Data", "🔬 Pair Analytics", "🚨 Alerts", "⚙️ System"]
+tab1, tab2, tab3, tab4, tab5 = st.tabs(
+    ["📊 Market Data", "🔬 Pair Analytics", "🤖 Live Trading", "🚨 Alerts", "⚙️ System"]
 )
 
 # ================= TAB 1: Market Data =================
@@ -787,8 +913,69 @@ with tab2:
                 else:
                     st.metric("Trades / Win Rate", f"{bt_res['n_trades']} / —")
 
-# ================= TAB 3: Alerts =================
+# ================= TAB 3: NEW Live Trading Tab =================
 with tab3:
+    st.markdown("## 🤖 Live Trading Dashboard")
+    
+    if not st.session_state["trading_engine"]:
+        st.info("💼 Configure API credentials and start trading to see live positions")
+    else:
+        trading_engine = st.session_state["trading_engine"]
+        status = trading_engine.get_status()
+        
+        # Account Overview
+        st.markdown("### 💰 Account Overview")
+        col_acc1, col_acc2, col_acc3, col_acc4 = st.columns(4)
+        
+        with col_acc1:
+            st.metric("Initial Balance", f"{status['initial_balance']:.2f} USDT" if status['initial_balance'] else "—")
+        with col_acc2:
+            st.metric("Current Balance", f"{status['current_balance']:.2f} USDT" if status['current_balance'] else "—")
+        with col_acc3:
+            st.metric("Unrealized P&L", f"{status['pnl']:.2f} USDT")
+        with col_acc4:
+            st.metric("P&L %", f"{status['pnl_pct']:.2f}%")
+        
+        # Active Positions
+        st.markdown("### 📍 Active Positions")
+        if status['positions']:
+            positions_df = pd.DataFrame([
+                {
+                    'Pair': k,
+                    'Type': v['type'],
+                    'Entry Z-Score': f"{v['entry_zscore']:.2f}",
+                    'Entry Time': v['entry_time'],
+                    'Qty S1': v['qty_s1'],
+                    'Qty S2': v['qty_s2'],
+                    'Hedge Ratio': f"{v['hedge_ratio']:.4f}"
+                }
+                for k, v in status['positions'].items()
+            ])
+            st.dataframe(positions_df, use_container_width=True)
+        else:
+            st.info("✅ No active positions")
+        
+        # Trade History
+        st.markdown("### 📜 Trade History")
+        if trading_engine.trade_history:
+            trades_df = pd.DataFrame(trading_engine.trade_history)
+            st.dataframe(trades_df.tail(20), use_container_width=True)
+        else:
+            st.info("No trades executed yet")
+        
+        # Risk Metrics
+        st.markdown("### ⚠️ Risk Management")
+        col_risk1, col_risk2, col_risk3 = st.columns(3)
+        
+        with col_risk1:
+            st.metric("Max Positions", f"{status['active_positions']}/{trading_engine.max_positions}")
+        with col_risk2:
+            st.metric("Stop Loss", f"{trading_engine.stop_loss_pct*100:.0f}%")
+        with col_risk3:
+            st.metric("Max Drawdown Limit", f"{trading_engine.max_drawdown*100:.0f}%")
+
+# ================= TAB 4: Alerts =================
+with tab4:
     st.markdown("## 🚨 Alert Management")
 
     if st.session_state["alerts_log"]:
@@ -831,11 +1018,11 @@ with tab3:
     else:
         st.info("✅ No alerts triggered. System is monitoring...")
 
-# ================= TAB 4: System =================
-with tab4:
+# ================= TAB 5: System =================
+with tab5:
     st.markdown("## ⚙️ System Diagnostics")
 
-    col_sys1, col_sys2 = st.columns(2)
+    col_sys1, col_sys2, col_sys3 = st.columns(3)
 
     with col_sys1:
         st.markdown("### 📊 Data Statistics")
@@ -860,6 +1047,16 @@ with tab4:
         )
         st.markdown(f"**Database:** `ticks.sqlite`")
         st.markdown(f"**Total Rows:** `{storage.count_rows()}`")
+
+    with col_sys3:
+        st.markdown("### 🤖 Trading Status")
+        if st.session_state["trading_engine"]:
+            eng_status = st.session_state["trading_engine"].get_status()
+            st.markdown(f"**Status:** {'🟢 Live' if eng_status['running'] else '🔴 Stopped'}")
+            st.markdown(f"**Positions:** `{eng_status['active_positions']}`")
+            st.markdown(f"**Total Trades:** `{eng_status['total_trades']}`")
+        else:
+            st.markdown("**Status:** 🔴 Not Configured")
 
     st.markdown("---")
 
@@ -927,7 +1124,7 @@ st.markdown(
     """
     <div style="text-align: center; color: #64748b; padding: 2rem 0 1rem 0;">
         <p style="margin: 0; font-size: 0.875rem;">
-            <strong>Quantitative Analytics Platform</strong> | Real-time statistical arbitrage monitoring
+            <strong>Quantitative Analytics & Trading Platform</strong> | Real-time statistical arbitrage monitoring & automated trading
         </p>
         <p style="margin: 0.5rem 0 0 0; font-size: 0.75rem;">
             Volume displayed as notional (price × quantity) for cross-instrument comparability
