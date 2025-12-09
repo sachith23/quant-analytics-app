@@ -118,17 +118,23 @@ class Storage:
         since = datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(minutes=minutes)
         since_iso = since.isoformat()
         con = self._connect()
-        df = pd.read_sql_query(
-            "SELECT symbol, ts, price, qty FROM ticks WHERE ts >= ? ORDER BY ts ASC",
-            con, params=(since_iso,)
-        )
-        con.close()
+        
+        try:
+            df = pd.read_sql_query(
+                "SELECT symbol, ts, price, qty FROM ticks WHERE ts >= ? ORDER BY ts ASC",
+                con, params=(since_iso,)
+            )
+        except Exception as e:
+            print(f"Error fetching ticks: {e}")
+            df = pd.DataFrame()
+        finally:
+            con.close()
         
         if df.empty:
             return df
         
         # Parse timestamps
-        df['ts'] = pd.to_datetime(df['ts'], utc=True, infer_datetime_format=True, errors='coerce')
+        df['ts'] = pd.to_datetime(df['ts'], utc=True, format='ISO8601', errors='coerce')
         df = df.dropna(subset=['ts'])
         
         if df.empty:
@@ -156,17 +162,36 @@ class Storage:
         since = datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(minutes=minutes)
         since_iso = since.isoformat()
         con = self._connect()
-        df = pd.read_sql_query(
-            "SELECT symbol, ts, open, high, low, close, volume FROM ohlc WHERE ts >= ? ORDER BY ts ASC",
-            con, params=(since_iso,)
-        )
-        con.close()
+        
+        try:
+            # Check if ohlc table has any data first
+            cur = con.cursor()
+            cur.execute("SELECT COUNT(*) FROM ohlc")
+            count = cur.fetchone()[0]
+            
+            if count == 0:
+                con.close()
+                return pd.DataFrame()
+            
+            df = pd.read_sql_query(
+                "SELECT symbol, ts, open, high, low, close, volume FROM ohlc WHERE ts >= ? ORDER BY ts ASC",
+                con, params=(since_iso,)
+            )
+        except sqlite3.OperationalError as e:
+            # Table doesn't exist or query error
+            print(f"OHLC table query error (this is normal on first run): {e}")
+            df = pd.DataFrame()
+        except Exception as e:
+            print(f"Error fetching OHLC: {e}")
+            df = pd.DataFrame()
+        finally:
+            con.close()
         
         if df.empty:
             return df
         
         # Parse timestamps
-        df['ts'] = pd.to_datetime(df['ts'], utc=True, infer_datetime_format=True, errors='coerce')
+        df['ts'] = pd.to_datetime(df['ts'], utc=True, format='ISO8601', errors='coerce')
         df = df.dropna(subset=['ts'])
         
         if df.empty:
@@ -194,16 +219,27 @@ class Storage:
         """Count total ticks in database"""
         con = self._connect()
         cur = con.cursor()
-        cur.execute("SELECT COUNT(*) FROM ticks")
-        n = cur.fetchone()[0]
-        con.close()
+        try:
+            cur.execute("SELECT COUNT(*) FROM ticks")
+            n = cur.fetchone()[0]
+        except Exception as e:
+            print(f"Error counting rows: {e}")
+            n = 0
+        finally:
+            con.close()
         return n
 
     def last_timestamp(self):
         """Get the timestamp of the most recent tick"""
         con = self._connect()
         cur = con.cursor()
-        cur.execute("SELECT ts FROM ticks ORDER BY ts DESC LIMIT 1")
-        r = cur.fetchone()
-        con.close()
-        return r[0] if r else None
+        try:
+            cur.execute("SELECT ts FROM ticks ORDER BY ts DESC LIMIT 1")
+            r = cur.fetchone()
+            result = r[0] if r else None
+        except Exception as e:
+            print(f"Error getting last timestamp: {e}")
+            result = None
+        finally:
+            con.close()
+        return result
